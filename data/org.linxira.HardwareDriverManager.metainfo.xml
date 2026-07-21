@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.linxira.HardwareDriverManager</id>
+  <name>Linxira Hardware and Driver Manager</name>
+  <summary>Inspect hardware and review fixed driver policy plans</summary>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <launchable type="desktop-id">org.linxira.HardwareDriverManager.desktop</launchable>
+  <description>
+    <p>Reports detector facts, installed driver state, supported kernel compatibility, DKMS status, initramfs state, and reboot effects.</p>
+    <p>This Phase 1 version creates reviewable user-state plans but does not apply system changes.</p>
+  </description>
+  <developer id="org.linxira"><name>Linxira OS</name></developer>
+  <content_rating type="oars-1.1" />
+  <url type="homepage">https://github.com/Linxira-OS/linxira-hardware-driver-manager</url>
+</component>

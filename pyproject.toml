@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linxira-hardware-driver-manager"
+version = "0.1.0"
+description = "Read-only hardware driver reporting and planning for Linxira OS"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "Linxira OS contributors"}]
+dependencies = ["PySide6>=6.7"]
+
+[project.scripts]
+linxira-hardware-driver-manager = "linxira_hardware_driver_manager.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/applications" = ["data/org.linxira.HardwareDriverManager.desktop"]
+"share/metainfo" = ["data/org.linxira.HardwareDriverManager.metainfo.xml"]

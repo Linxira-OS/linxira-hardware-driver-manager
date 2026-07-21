@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Linxira Hardware and Driver Manager
+Comment=Review hardware, drivers, kernels, and fixed policy plans
+Exec=/usr/bin/linxira-hardware-driver-manager
+Icon=preferences-system-devices
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=hardware;drivers;graphics;kernel;dkms;
+StartupNotify=true
