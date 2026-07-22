@@ -1,8 +1,9 @@
 # Linxira Hardware and Driver Manager
 
-Phase 1 read-only hardware and driver reporting and fixed-policy planning UI for
-Linxira OS. It consumes `/usr/bin/linxira-chwd-detector` with no arguments and
-keeps hardware facts separate from package policy.
+Hardware and driver reporting and fixed-policy planning UI for Linxira OS. It
+consumes `/usr/bin/linxira-chwd-detector` with no arguments, keeps hardware facts
+separate from package policy, and can run a root-owned read-only diagnosis through
+the shared Linxira system transaction service.
 
 ## Safety boundary
 
@@ -13,7 +14,9 @@ keeps hardware facts separate from package policy.
 - Policies and package names are declarative constants; no path, package, or command input is accepted.
 - NVIDIA open and proprietary plans are alternatives requiring explicit review. No device-ID support claim is made. The proprietary DKMS comparison is blocked because the reviewed official Arch cohort currently has no dual-kernel package for it.
 - Plans are written atomically with private permissions below `$XDG_STATE_HOME/linxira/hardware-driver-manager/plans`.
-- Apply is deliberately unavailable. The manager performs no package, service, privilege, or system-file changes.
+- Driver Apply remains unavailable. Root diagnosis uses a fixed operation ID,
+  an empty parameter object, a reviewable short-lived plan, and an immutable
+  receipt; it performs no package, service, or system-file changes.
 
 ## CLI
 

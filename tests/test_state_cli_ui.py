@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -64,11 +64,26 @@ class UiSmokeTests(unittest.TestCase):
         window = MainWindow(report)
         self.assertIn("org.linxira.driver.nvidia-open-dkms.v1", window.plan_view.toPlainText())
         self.assertFalse(window.apply_button.isEnabled())
+        self.assertTrue(window.diagnosis_button.isEnabled())
+        self.assertIn("No root-owned diagnosis", window.diagnosis_status.text())
         self.assertFalse(window.save_button.isEnabled())
         window.confirm.setChecked(True)
         self.assertTrue(window.save_button.isEnabled())
         self.assertFalse(window.apply_button.isEnabled())
         self.assertIn("backend-not-ready", window.backend_status.text())
+        window.close()
+
+    def test_close_is_deferred_while_root_diagnosis_runs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_state_files(Path(directory))
+            state = collect_system_state(FixedRunner({"linux", "linux-headers"}), **paths)
+        window = MainWindow(report_for(["graphics.intel"], state))
+        window.diagnosis_plan_worker = type("Worker", (), {"isRunning": lambda self: True})()
+        event = type("Event", (), {"ignore": Mock()})()
+        with patch("linxira_hardware_driver_manager.ui.QMessageBox.information"):
+            window.closeEvent(event)
+        event.ignore.assert_called_once()
+        window.diagnosis_plan_worker = None
         window.close()
 
 

@@ -8,7 +8,7 @@
   <launchable type="desktop-id">org.linxira.HardwareDriverManager.desktop</launchable>
   <description>
     <p>Reports detector facts, installed driver state, supported kernel compatibility, DKMS status, initramfs state, and reboot effects.</p>
-    <p>This Phase 1 version creates reviewable user-state plans but does not apply system changes.</p>
+    <p>Creates reviewable user-state driver plans and executes a fixed read-only root diagnosis with a receipt. It does not apply driver changes.</p>
   </description>
   <developer id="org.linxira"><name>Linxira OS</name></developer>
   <content_rating type="oars-1.1" />
