@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "linxira-hardware-driver-manager"
-version = "0.2.0"
+version = "0.3.0"
 description = "Hardware driver reporting, fixed planning, and root-owned diagnostics for Linxira OS"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -7,7 +7,10 @@ from unittest import mock
 from linxira_hardware_driver_manager.backend import (
     BackendError,
     HARDWARE_DIAGNOSIS,
+    HYPERV_DRIVER_APPLY,
+    apply_driver,
     create_diagnosis_plan,
+    create_driver_plan,
     run_diagnosis,
 )
 
@@ -51,3 +54,27 @@ class BackendTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(BackendError, "safely"):
             run_diagnosis(transaction, interface)
+
+    def test_hyperv_backend_requires_snapshot_plan_and_bound_receipt(self):
+        interface = mock.Mock()
+        interface.CreateSystemPlan.return_value = (
+            "plan-id", json.dumps({
+                "id": "plan-id", "operationId": HYPERV_DRIVER_APPLY,
+                "risk": "system-change-reboot-possible", "digest": "digest",
+                "rollback": "pre-change-timeshift-snapshot-separate-restore-authorization",
+            }),
+        )
+        transaction = create_driver_plan(HYPERV_DRIVER_APPLY, interface)
+        interface.ConfirmAndApplySystemPlan.return_value = (
+            "receipt-id", json.dumps({
+                "id": "receipt-id", "planId": "plan-id", "planDigest": "digest",
+                "operationId": HYPERV_DRIVER_APPLY, "status": "succeeded", "changed": True,
+                "rollback": "timeshift-restore-requires-separate-authorization-and-reboot",
+                "snapshot": {"name": "2026-07-22_12-00-00"},
+                "verifiedState": {"artifacts": [{"name": "hyperv", "version": "6.15-1"}]},
+            }),
+        )
+        self.assertEqual(apply_driver(transaction, interface)["status"], "succeeded")
+        interface.ConfirmAndApplySystemPlan.assert_called_once_with("plan-id", "digest", timeout=86400)
+        with self.assertRaisesRegex(BackendError, "no executable"):
+            create_driver_plan("org.linxira.driver.vm-qemu-guest.v1", interface)

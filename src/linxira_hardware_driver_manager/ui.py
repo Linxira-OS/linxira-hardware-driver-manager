@@ -24,7 +24,10 @@ from PySide6.QtWidgets import (
 
 from .policy import POLICY_BY_ID
 from .reporting import build_plan, save_plan_atomic
-from .backend import Transaction, create_diagnosis_plan, run_diagnosis
+from .backend import (
+    HYPERV_DRIVER_APPLY, Transaction, apply_driver, create_diagnosis_plan,
+    create_driver_plan, run_diagnosis,
+)
 
 
 class DiagnosisPlanThread(QThread):
@@ -53,13 +56,43 @@ class DiagnosisRunThread(QThread):
             self.failed.emit(str(error))
 
 
-class DiagnosisPlanDialog(QDialog):
+class DriverPlanThread(QThread):
+    succeeded = Signal(object)
+    failed = Signal(str)
+
+    def run(self):
+        try:
+            self.succeeded.emit(create_driver_plan(HYPERV_DRIVER_APPLY))
+        except Exception as error:
+            self.failed.emit(str(error))
+
+
+class DriverRunThread(QThread):
+    succeeded = Signal(object)
+    failed = Signal(str)
+
     def __init__(self, transaction, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Confirm read-only hardware diagnosis")
+        self.transaction = transaction
+
+    def run(self):
+        try:
+            self.succeeded.emit(apply_driver(self.transaction))
+        except Exception as error:
+            self.failed.emit(str(error))
+
+
+class DiagnosisPlanDialog(QDialog):
+    def __init__(
+        self, transaction, parent=None, *, title="Confirm read-only hardware diagnosis",
+        message="Review the complete root-owned hardware plan before running it.",
+        confirm_text="Confirm and diagnose",
+    ):
+        super().__init__(parent)
+        self.setWindowTitle(title)
         self.resize(760, 580)
         layout = QVBoxLayout(self)
-        label = QLabel("Review the complete root-owned hardware plan before running it.")
+        label = QLabel(message)
         label.setWordWrap(True)
         layout.addWidget(label)
         view = QPlainTextEdit(json.dumps(transaction.plan, ensure_ascii=True, indent=2, sort_keys=True))
@@ -68,7 +101,7 @@ class DiagnosisPlanDialog(QDialog):
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
         )
-        buttons.button(QDialogButtonBox.StandardButton.Ok).setText("Confirm and diagnose")
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText(confirm_text)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -81,6 +114,8 @@ class MainWindow(QMainWindow):
         self.plan: dict | None = None
         self.diagnosis_plan_worker = None
         self.diagnosis_run_worker = None
+        self.driver_plan_worker = None
+        self.driver_run_worker = None
         self.setWindowTitle("Linxira Hardware and Driver Manager")
         self.resize(1050, 720)
         self._build()
@@ -137,7 +172,7 @@ class MainWindow(QMainWindow):
         controls.addWidget(self.save_button)
         self.apply_button = QPushButton("Apply")
         self.apply_button.setEnabled(False)
-        self.apply_button.setToolTip("Backend not ready; this MVP cannot apply changes")
+        self.apply_button.clicked.connect(self._create_driver_plan)
         controls.addWidget(self.apply_button)
         driver_layout.addLayout(controls)
         self.backend_status = QLabel("Apply unavailable: backend-not-ready")
@@ -160,12 +195,15 @@ class MainWindow(QMainWindow):
         self._refresh_plan()
 
     def closeEvent(self, event) -> None:
-        workers = (self.diagnosis_plan_worker, self.diagnosis_run_worker)
+        workers = (
+            self.diagnosis_plan_worker, self.diagnosis_run_worker,
+            self.driver_plan_worker, self.driver_run_worker,
+        )
         if any(worker is not None and worker.isRunning() for worker in workers):
             event.ignore()
             QMessageBox.information(
                 self, "Linxira Hardware and Driver Manager",
-                "Wait for the hardware diagnosis to finish before closing.",
+                "Wait for the hardware transaction to finish before closing.",
             )
             return
         super().closeEvent(event)
@@ -215,15 +253,83 @@ class MainWindow(QMainWindow):
         self.diagnosis_run_worker = None
         self.diagnosis_button.setEnabled(True)
 
+    def _create_driver_plan(self) -> None:
+        if self.selector.currentData() != HYPERV_DRIVER_APPLY or not self.confirm.isChecked():
+            return
+        self.apply_button.setEnabled(False)
+        self.backend_status.setText("Creating root-owned Hyper-V driver plan")
+        self.driver_plan_worker = DriverPlanThread(self)
+        self.driver_plan_worker.succeeded.connect(self._driver_plan_ready)
+        self.driver_plan_worker.failed.connect(self._driver_failed)
+        self.driver_plan_worker.finished.connect(self._driver_plan_finished)
+        self.driver_plan_worker.start()
+
+    def _driver_plan_ready(self, transaction: Transaction) -> None:
+        dialog = DiagnosisPlanDialog(
+            transaction, self, title="Confirm Hyper-V guest tools",
+            message="Review the root-owned package plan and required pre-change snapshot.",
+            confirm_text="Snapshot and apply",
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            self.backend_status.setText("Hyper-V driver apply cancelled")
+            return
+        self.backend_status.setText("Creating snapshot and applying fixed Hyper-V guest tools")
+        self.driver_run_worker = DriverRunThread(transaction, self)
+        self.driver_run_worker.succeeded.connect(self._driver_complete)
+        self.driver_run_worker.failed.connect(self._driver_failed)
+        self.driver_run_worker.finished.connect(self._driver_run_finished)
+        self.driver_run_worker.start()
+
+    def _driver_complete(self, receipt: dict) -> None:
+        self.backend_status.setText(f"Receipt {receipt['id']}: {receipt['status']}")
+        text = json.dumps(receipt, ensure_ascii=True, indent=2, sort_keys=True)
+        if receipt["status"] == "succeeded":
+            QMessageBox.information(self, "Hyper-V guest tools applied", text)
+        else:
+            QMessageBox.warning(self, "Hyper-V guest tools failed", text)
+
+    def _driver_failed(self, message: str) -> None:
+        self.backend_status.setText("Hyper-V driver transaction failed")
+        QMessageBox.critical(self, "Hyper-V driver transaction failed", message)
+
+    def _driver_plan_finished(self) -> None:
+        self.driver_plan_worker.deleteLater()
+        self.driver_plan_worker = None
+        if self.driver_run_worker is None:
+            self._update_apply_state()
+
+    def _driver_run_finished(self) -> None:
+        self.driver_run_worker.deleteLater()
+        self.driver_run_worker = None
+        self.confirm.setChecked(False)
+        self._update_apply_state()
+
+    def _update_apply_state(self) -> None:
+        executable = (
+            self.selector.currentData() == HYPERV_DRIVER_APPLY
+            and self.plan is not None and self.plan.get("applicable") is True
+        )
+        self.apply_button.setEnabled(executable and self.confirm.isChecked())
+        self.apply_button.setToolTip(
+            "" if executable else "Only the applicable Hyper-V guest tools policy has an executable backend"
+        )
+
     def _refresh_plan(self) -> None:
         policy_id = self.selector.currentData()
         self.plan = build_plan(self.report, policy_id) if policy_id else None
         self.plan_view.setPlainText(json.dumps(self.plan or {}, ensure_ascii=True, indent=2, sort_keys=True))
         self.confirm.setChecked(False)
         self.save_button.setEnabled(False)
+        self._update_apply_state()
+        self.backend_status.setText(
+            "Apply available with a required Timeshift snapshot"
+            if self.selector.currentData() == HYPERV_DRIVER_APPLY and self.plan and self.plan.get("applicable") is True
+            else "Apply unavailable: backend-not-ready"
+        )
 
     def _confirmation_changed(self, state: int) -> None:
         self.save_button.setEnabled(state == Qt.CheckState.Checked.value and self.plan is not None)
+        self._update_apply_state()
 
     def _save(self) -> None:
         if self.plan is not None and self.confirm.isChecked():

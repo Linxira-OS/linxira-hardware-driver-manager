@@ -76,7 +76,9 @@ class UiSmokeTests(unittest.TestCase):
     def test_close_is_deferred_while_root_diagnosis_runs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             paths = write_state_files(Path(directory))
-            state = collect_system_state(FixedRunner({"linux", "linux-headers"}), **paths)
+            state = collect_system_state(FixedRunner({
+                "linux", "linux-headers", "linux-lts", "linux-lts-headers",
+            }), **paths)
         window = MainWindow(report_for(["graphics.intel"], state))
         window.diagnosis_plan_worker = type("Worker", (), {"isRunning": lambda self: True})()
         event = type("Event", (), {"ignore": Mock()})()
@@ -84,6 +86,25 @@ class UiSmokeTests(unittest.TestCase):
             window.closeEvent(event)
         event.ignore.assert_called_once()
         window.diagnosis_plan_worker = None
+        window.close()
+
+    def test_only_applicable_hyperv_policy_enables_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_state_files(
+                Path(directory), (("linux", "6.12.1-arch1-1"), ("linux-lts", "6.6.9-arch1-1")),
+            )
+            state = collect_system_state(FixedRunner({
+                "linux", "linux-headers", "linux-lts", "linux-lts-headers",
+            }), **paths)
+        report = report_for(["vm.hyperv"], state)
+        report["recommendations"] = [{
+            "policyId": "org.linxira.driver.vm-hyperv-guest.v1", "title": "Hyper-V guest tools",
+        }]
+        window = MainWindow(report)
+        self.assertFalse(window.apply_button.isEnabled())
+        window.confirm.setChecked(True)
+        self.assertTrue(window.apply_button.isEnabled())
+        self.assertIn("Timeshift snapshot", window.backend_status.text())
         window.close()
 
 
