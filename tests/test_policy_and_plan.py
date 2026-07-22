@@ -97,6 +97,16 @@ class PlanTests(unittest.TestCase):
             plan = build_plan(report_for(["graphics.nvidia"], state), NVIDIA_OPEN)
         self.assertEqual(plan["effects"]["repositoryChanges"], ["arch-multilib-required"])
 
+    def test_hyperv_plan_discloses_fixed_service_enablement(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = self._state(Path(directory))
+            plan = build_plan(
+                report_for(["vm.hyperv"], state), "org.linxira.driver.vm-hyperv-guest.v1"
+            )
+        self.assertEqual(plan["effects"]["serviceChanges"], [
+            "enable:hv_kvp_daemon.service", "enable:hv_vss_daemon.service",
+        ])
+
     def test_unavailable_proprietary_policy_is_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = self._state(Path(directory))

@@ -138,7 +138,10 @@ def build_plan(report: dict[str, Any], policy_id: str) -> dict[str, Any]:
         "effects": {
             "initramfsRegenerationExpected": policy.requires_dkms,
             "rebootExpected": policy.driver_model != "guest",
-            "serviceChanges": [],
+            "serviceChanges": (
+                ["enable:hv_kvp_daemon.service", "enable:hv_vss_daemon.service"]
+                if policy.id == "org.linxira.driver.vm-hyperv-guest.v1" else []
+            ),
             "repositoryChanges": list(policy.repository_changes),
         },
         "warnings": warnings,
