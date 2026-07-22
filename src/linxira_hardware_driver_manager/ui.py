@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 from .policy import POLICY_BY_ID
 from .reporting import build_plan, save_plan_atomic
 from .backend import (
-    HYPERV_DRIVER_APPLY, Transaction, apply_driver, create_diagnosis_plan,
+    DRIVER_APPLY_OPERATIONS, Transaction, apply_driver, create_diagnosis_plan,
     create_driver_plan, run_diagnosis,
 )
 
@@ -60,9 +60,13 @@ class DriverPlanThread(QThread):
     succeeded = Signal(object)
     failed = Signal(str)
 
+    def __init__(self, policy_id, parent=None):
+        super().__init__(parent)
+        self.policy_id = policy_id
+
     def run(self):
         try:
-            self.succeeded.emit(create_driver_plan(HYPERV_DRIVER_APPLY))
+            self.succeeded.emit(create_driver_plan(self.policy_id))
         except Exception as error:
             self.failed.emit(str(error))
 
@@ -254,11 +258,12 @@ class MainWindow(QMainWindow):
         self.diagnosis_button.setEnabled(True)
 
     def _create_driver_plan(self) -> None:
-        if self.selector.currentData() != HYPERV_DRIVER_APPLY or not self.confirm.isChecked():
+        policy_id = self.selector.currentData()
+        if policy_id not in DRIVER_APPLY_OPERATIONS or not self.confirm.isChecked():
             return
         self.apply_button.setEnabled(False)
-        self.backend_status.setText("Creating root-owned Hyper-V driver plan")
-        self.driver_plan_worker = DriverPlanThread(self)
+        self.backend_status.setText("Creating root-owned guest integration plan")
+        self.driver_plan_worker = DriverPlanThread(policy_id, self)
         self.driver_plan_worker.succeeded.connect(self._driver_plan_ready)
         self.driver_plan_worker.failed.connect(self._driver_failed)
         self.driver_plan_worker.finished.connect(self._driver_plan_finished)
@@ -266,14 +271,14 @@ class MainWindow(QMainWindow):
 
     def _driver_plan_ready(self, transaction: Transaction) -> None:
         dialog = DiagnosisPlanDialog(
-            transaction, self, title="Confirm Hyper-V guest tools",
+            transaction, self, title="Confirm guest integration tools",
             message="Review the root-owned package plan and required pre-change snapshot.",
             confirm_text="Snapshot and apply",
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
-            self.backend_status.setText("Hyper-V driver apply cancelled")
+            self.backend_status.setText("Guest integration apply cancelled")
             return
-        self.backend_status.setText("Creating snapshot and applying fixed Hyper-V guest tools")
+        self.backend_status.setText("Creating snapshot and applying fixed guest integration tools")
         self.driver_run_worker = DriverRunThread(transaction, self)
         self.driver_run_worker.succeeded.connect(self._driver_complete)
         self.driver_run_worker.failed.connect(self._driver_failed)
@@ -284,13 +289,13 @@ class MainWindow(QMainWindow):
         self.backend_status.setText(f"Receipt {receipt['id']}: {receipt['status']}")
         text = json.dumps(receipt, ensure_ascii=True, indent=2, sort_keys=True)
         if receipt["status"] == "succeeded":
-            QMessageBox.information(self, "Hyper-V guest tools applied", text)
+            QMessageBox.information(self, "Guest integration tools applied", text)
         else:
-            QMessageBox.warning(self, "Hyper-V guest tools failed", text)
+            QMessageBox.warning(self, "Guest integration tools failed", text)
 
     def _driver_failed(self, message: str) -> None:
-        self.backend_status.setText("Hyper-V driver transaction failed")
-        QMessageBox.critical(self, "Hyper-V driver transaction failed", message)
+        self.backend_status.setText("Guest integration transaction failed")
+        QMessageBox.critical(self, "Guest integration transaction failed", message)
 
     def _driver_plan_finished(self) -> None:
         self.driver_plan_worker.deleteLater()
@@ -306,12 +311,12 @@ class MainWindow(QMainWindow):
 
     def _update_apply_state(self) -> None:
         executable = (
-            self.selector.currentData() == HYPERV_DRIVER_APPLY
+            self.selector.currentData() in DRIVER_APPLY_OPERATIONS
             and self.plan is not None and self.plan.get("applicable") is True
         )
         self.apply_button.setEnabled(executable and self.confirm.isChecked())
         self.apply_button.setToolTip(
-            "" if executable else "Only the applicable Hyper-V guest tools policy has an executable backend"
+            "" if executable else "Only applicable reviewed VM guest policies have an executable backend"
         )
 
     def _refresh_plan(self) -> None:
@@ -323,7 +328,7 @@ class MainWindow(QMainWindow):
         self._update_apply_state()
         self.backend_status.setText(
             "Apply available with a required Timeshift snapshot"
-            if self.selector.currentData() == HYPERV_DRIVER_APPLY and self.plan and self.plan.get("applicable") is True
+            if self.selector.currentData() in DRIVER_APPLY_OPERATIONS and self.plan and self.plan.get("applicable") is True
             else "Apply unavailable: backend-not-ready"
         )
 

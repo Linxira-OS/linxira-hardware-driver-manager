@@ -10,6 +10,11 @@ OBJECT_PATH = "/org/linxira/Components1"
 INTERFACE = "org.linxira.Components1"
 HARDWARE_DIAGNOSIS = "org.linxira.hardware.driver-state-diagnose.v1"
 HYPERV_DRIVER_APPLY = "org.linxira.driver.vm-hyperv-guest.v1"
+DRIVER_APPLY_OPERATIONS = frozenset({
+    HYPERV_DRIVER_APPLY,
+    "org.linxira.driver.vm-qemu-guest.v1",
+    "org.linxira.driver.vm-vmware-guest.v1",
+})
 
 
 class BackendError(RuntimeError):
@@ -64,7 +69,7 @@ def create_diagnosis_plan(interface=None) -> Transaction:
 
 
 def create_driver_plan(policy_id: str, interface=None) -> Transaction:
-    if policy_id != HYPERV_DRIVER_APPLY:
+    if policy_id not in DRIVER_APPLY_OPERATIONS:
         raise BackendError("This driver policy has no executable system backend")
     transaction = _create_plan(policy_id, interface)
     if (
@@ -97,7 +102,7 @@ def run_diagnosis(transaction: Transaction, interface=None) -> dict[str, Any]:
 
 
 def apply_driver(transaction: Transaction, interface=None) -> dict[str, Any]:
-    if transaction.plan.get("operationId") != HYPERV_DRIVER_APPLY:
+    if transaction.plan.get("operationId") not in DRIVER_APPLY_OPERATIONS:
         raise BackendError("This driver transaction cannot be applied")
     client = _interface() if interface is None else interface
     try:
@@ -110,7 +115,7 @@ def apply_driver(transaction: Transaction, interface=None) -> dict[str, Any]:
     if (
         receipt.get("id") != str(receipt_id) or receipt.get("planId") != transaction.plan_id
         or receipt.get("planDigest") != transaction.plan.get("digest")
-        or receipt.get("operationId") != HYPERV_DRIVER_APPLY
+        or receipt.get("operationId") != transaction.plan.get("operationId")
         or receipt.get("status") not in {"succeeded", "failed"}
         or not isinstance(receipt.get("changed"), bool)
         or receipt.get("rollback") not in {

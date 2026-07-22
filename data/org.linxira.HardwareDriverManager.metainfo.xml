@@ -8,7 +8,7 @@
   <launchable type="desktop-id">org.linxira.HardwareDriverManager.desktop</launchable>
   <description>
     <p>Reports detector facts, installed driver state, supported kernel compatibility, DKMS status, initramfs state, and reboot effects.</p>
-    <p>Creates reviewable driver plans and root-owned receipts. Hyper-V guest tools can be applied after a required Timeshift snapshot; other driver changes remain unavailable.</p>
+    <p>Creates reviewable driver plans and root-owned receipts. Hyper-V, QEMU, and VMware guest tools can be applied after a required Timeshift snapshot; other driver changes remain unavailable.</p>
   </description>
   <developer id="org.linxira"><name>Linxira OS</name></developer>
   <content_rating type="oars-1.1" />

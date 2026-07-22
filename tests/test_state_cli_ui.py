@@ -107,6 +107,27 @@ class UiSmokeTests(unittest.TestCase):
         self.assertIn("Timeshift snapshot", window.backend_status.text())
         window.close()
 
+    def test_qemu_and_vmware_enable_apply_but_virtualbox_stays_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_state_files(
+                Path(directory), (("linux", "6.12.1-arch1-1"), ("linux-lts", "6.6.9-arch1-1")),
+            )
+            state = collect_system_state(FixedRunner({
+                "linux", "linux-headers", "linux-lts", "linux-lts-headers",
+            }), **paths)
+        cases = (
+            ("vm.qemu", "org.linxira.driver.vm-qemu-guest.v1", True),
+            ("vm.vmware", "org.linxira.driver.vm-vmware-guest.v1", True),
+            ("vm.virtualbox", "org.linxira.driver.vm-virtualbox-guest.v1", False),
+        )
+        for fact, policy_id, expected in cases:
+            report = report_for([fact], state)
+            report["recommendations"] = [{"policyId": policy_id, "title": fact}]
+            window = MainWindow(report)
+            window.confirm.setChecked(True)
+            self.assertEqual(window.apply_button.isEnabled(), expected)
+            window.close()
+
 
 if __name__ == "__main__":
     unittest.main()

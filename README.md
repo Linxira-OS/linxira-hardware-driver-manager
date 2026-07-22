@@ -14,10 +14,11 @@ the shared Linxira system transaction service.
 - Policies and package names are declarative constants; no path, package, or command input is accepted.
 - NVIDIA open and proprietary plans are alternatives requiring explicit review. No device-ID support claim is made. The proprietary DKMS comparison is blocked because the reviewed official Arch cohort currently has no dual-kernel package for it.
 - Plans are written atomically with private permissions below `$XDG_STATE_HOME/linxira/hardware-driver-manager/plans`.
-- Driver Apply remains unavailable except for the fixed Hyper-V guest tools
-  policy. Hyper-V apply requires a root-owned plan, a verified Timeshift Btrfs
+- Driver Apply remains unavailable except for the fixed Hyper-V, QEMU, and
+  VMware guest policies. Apply requires a root-owned plan, a verified Timeshift Btrfs
   pre-change snapshot, unchanged repository and hardware evidence, fixed
-  package execution, artifact verification, and an immutable receipt.
+  package execution, platform-specific service verification, and an immutable receipt.
+  VirtualBox remains unavailable until dual-kernel guest-module providers are fixed.
   Root diagnosis uses a fixed operation ID,
   an empty parameter object, a reviewable short-lived plan, and an immutable
   receipt; diagnosis performs no package, service, or system-file changes.

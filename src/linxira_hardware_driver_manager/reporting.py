@@ -138,10 +138,17 @@ def build_plan(report: dict[str, Any], policy_id: str) -> dict[str, Any]:
         "effects": {
             "initramfsRegenerationExpected": policy.requires_dkms,
             "rebootExpected": policy.driver_model != "guest",
-            "serviceChanges": (
-                ["enable:hv_kvp_daemon.service", "enable:hv_vss_daemon.service"]
-                if policy.id == "org.linxira.driver.vm-hyperv-guest.v1" else []
-            ),
+            "serviceChanges": {
+                "org.linxira.driver.vm-hyperv-guest.v1": [
+                    "enable:hv_kvp_daemon.service", "enable:hv_vss_daemon.service",
+                ],
+                "org.linxira.driver.vm-qemu-guest.v1": [
+                    "verify-static:qemu-guest-agent.service", "verify-static:spice-vdagentd.socket",
+                ],
+                "org.linxira.driver.vm-vmware-guest.v1": [
+                    "enable:vmtoolsd.service", "enable:vmware-vmblock-fuse.service",
+                ],
+            }.get(policy.id, []),
             "repositoryChanges": list(policy.repository_changes),
         },
         "warnings": warnings,

@@ -107,12 +107,34 @@ class PlanTests(unittest.TestCase):
             "enable:hv_kvp_daemon.service", "enable:hv_vss_daemon.service",
         ])
 
+    def test_qemu_and_vmware_plans_disclose_distinct_service_contracts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = self._state(Path(directory))
+            qemu = build_plan(report_for(["vm.qemu"], state), "org.linxira.driver.vm-qemu-guest.v1")
+            vmware = build_plan(report_for(["vm.vmware"], state), "org.linxira.driver.vm-vmware-guest.v1")
+        self.assertEqual(qemu["effects"]["serviceChanges"], [
+            "verify-static:qemu-guest-agent.service", "verify-static:spice-vdagentd.socket",
+        ])
+        self.assertEqual(vmware["effects"]["serviceChanges"], [
+            "enable:vmtoolsd.service", "enable:vmware-vmblock-fuse.service",
+        ])
+
     def test_unavailable_proprietary_policy_is_blocked(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state = self._state(Path(directory))
             plan = build_plan(report_for(["graphics.nvidia"], state), NVIDIA_PROPRIETARY)
         self.assertFalse(plan["applicable"])
         self.assertTrue(any("official Arch cohort" in item for item in plan["blockers"]))
+
+    def test_virtualbox_is_unavailable_until_dual_kernel_modules_are_fixed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state = self._state(Path(directory))
+            plan = build_plan(
+                report_for(["vm.virtualbox"], state), "org.linxira.driver.vm-virtualbox-guest.v1"
+            )
+        self.assertFalse(plan["policy"]["available"])
+        self.assertFalse(plan["applicable"])
+        self.assertTrue(any("Dual-kernel" in blocker for blocker in plan["blockers"]))
 
     def test_absent_fact_or_kernel_blocks_applicability(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

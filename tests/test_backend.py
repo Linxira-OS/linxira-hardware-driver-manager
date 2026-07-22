@@ -77,4 +77,4 @@ class BackendTests(unittest.TestCase):
         self.assertEqual(apply_driver(transaction, interface)["status"], "succeeded")
         interface.ConfirmAndApplySystemPlan.assert_called_once_with("plan-id", "digest", timeout=86400)
         with self.assertRaisesRegex(BackendError, "no executable"):
-            create_driver_plan("org.linxira.driver.vm-qemu-guest.v1", interface)
+            create_driver_plan("org.linxira.driver.vm-virtualbox-guest.v1", interface)
