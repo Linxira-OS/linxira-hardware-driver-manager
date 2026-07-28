@@ -12,5 +12,9 @@
   </description>
   <developer id="org.linxira"><name>Linxira OS</name></developer>
   <content_rating type="oars-1.1" />
-  <url type="homepage">https://github.com/Linxira-OS/linxira-hardware-driver-manager</url>
+  <url type="homepage">https://linxira-os.github.io/</url>
+  <url type="vcs-browser">https://github.com/Linxira-OS/linxira-hardware-driver-manager</url>
+  <url type="bugtracker">https://github.com/Linxira-OS/linxira-hardware-driver-manager/issues</url>
+  <url type="help">https://linxira-os.github.io/linxira-wiki/</url>
+  <releases><release version="0.4.0" date="2026-07-26" /></releases>
 </component>

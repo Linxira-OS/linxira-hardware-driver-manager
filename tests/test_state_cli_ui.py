@@ -107,6 +107,25 @@ class UiSmokeTests(unittest.TestCase):
         self.assertIn("Timeshift snapshot", window.backend_status.text())
         window.close()
 
+    def test_successful_driver_apply_rebuilds_installed_state_report(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            paths = write_state_files(Path(directory))
+            state = collect_system_state(FixedRunner({"linux", "linux-headers"}), **paths)
+        report = report_for(["vm.hyperv"], state)
+        report["recommendations"] = [{
+            "policyId": "org.linxira.driver.vm-hyperv-guest.v1", "title": "Hyper-V guest tools",
+        }]
+        refreshed = dict(report)
+        refreshed["generatedAt"] = "refreshed"
+        window = MainWindow(report)
+        with patch("linxira_hardware_driver_manager.ui.build_report", return_value=refreshed) as rebuild, \
+             patch("linxira_hardware_driver_manager.ui.QMessageBox.information"):
+            window._driver_complete({"id": "receipt", "status": "succeeded"})
+        rebuild.assert_called_once_with()
+        self.assertEqual(window.report["generatedAt"], "refreshed")
+        self.assertIn("refreshed", window.report_view.toPlainText())
+        window.close()
+
     def test_qemu_and_vmware_enable_apply_but_virtualbox_stays_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             paths = write_state_files(

@@ -13,6 +13,12 @@ license-files = ["LICENSE"]
 authors = [{name = "Linxira OS contributors"}]
 dependencies = ["PySide6>=6.7"]
 
+[project.urls]
+Homepage = "https://linxira-os.github.io/"
+Repository = "https://github.com/Linxira-OS/linxira-hardware-driver-manager"
+Issues = "https://github.com/Linxira-OS/linxira-hardware-driver-manager/issues"
+Documentation = "https://linxira-os.github.io/linxira-wiki/"
+
 [project.scripts]
 linxira-hardware-driver-manager = "linxira_hardware_driver_manager.app:main"
 

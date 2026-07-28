@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from PySide6.QtCore import QThread, Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QAction, QFont
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -22,8 +22,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .about import show_about
 from .policy import POLICY_BY_ID
-from .reporting import build_plan, save_plan_atomic
+from .reporting import build_plan, build_report, save_plan_atomic
 from .backend import (
     DRIVER_APPLY_OPERATIONS, Transaction, apply_driver, create_diagnosis_plan,
     create_driver_plan, run_diagnosis,
@@ -123,6 +124,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Linxira Hardware and Driver Manager")
         self.resize(1050, 720)
         self._build()
+        about = QAction("About Linxira Hardware and Driver Manager", self)
+        about.triggered.connect(lambda: show_about(self))
+        self.menuBar().addMenu("Help").addAction(about)
 
     def _text_view(self, value: object) -> QPlainTextEdit:
         view = QPlainTextEdit(json.dumps(value, ensure_ascii=True, indent=2, sort_keys=True))
@@ -183,14 +187,12 @@ class MainWindow(QMainWindow):
         driver_layout.addWidget(self.backend_status)
         tabs.addTab(drivers, "Drivers")
 
-        tree = QTreeWidget()
-        tree.setHeaderLabels(["Kernel", "Installed", "Headers", "DKMS"])
-        for kernel in self.report["installedState"]["kernels"]:
-            header = f"{kernel['package']}-headers"
-            dkms_ok = any(item["kernelRelease"] == kernel["release"] and item["status"] == "installed" for item in self.report["installedState"]["dkms"])
-            QTreeWidgetItem(tree, [kernel["package"], kernel["release"], "yes" if self.report["installedState"]["packages"][header]["installed"] else "missing", "installed" if dkms_ok else "not validated"])
-        tabs.addTab(tree, "Kernel compatibility")
-        tabs.addTab(self._text_view(self.report), "Activity / report")
+        self.kernel_tree = QTreeWidget()
+        self.kernel_tree.setHeaderLabels(["Kernel", "Installed", "Headers", "DKMS"])
+        self.report_view = self._text_view(self.report)
+        self._populate_kernel_state()
+        tabs.addTab(self.kernel_tree, "Kernel compatibility")
+        tabs.addTab(self.report_view, "Activity / report")
 
         container = QWidget()
         layout = QVBoxLayout(container)
@@ -289,6 +291,7 @@ class MainWindow(QMainWindow):
         self.backend_status.setText(f"Receipt {receipt['id']}: {receipt['status']}")
         text = json.dumps(receipt, ensure_ascii=True, indent=2, sort_keys=True)
         if receipt["status"] == "succeeded":
+            self._refresh_installed_state()
             QMessageBox.information(self, "Guest integration tools applied", text)
         else:
             QMessageBox.warning(self, "Guest integration tools failed", text)
@@ -318,6 +321,27 @@ class MainWindow(QMainWindow):
         self.apply_button.setToolTip(
             "" if executable else "Only applicable reviewed VM guest policies have an executable backend"
         )
+
+    def _populate_kernel_state(self) -> None:
+        self.kernel_tree.clear()
+        state = self.report["installedState"]
+        for kernel in state["kernels"]:
+            header = f"{kernel['package']}-headers"
+            dkms_ok = any(
+                item["kernelRelease"] == kernel["release"] and item["status"] == "installed"
+                for item in state["dkms"]
+            )
+            QTreeWidgetItem(self.kernel_tree, [
+                kernel["package"], kernel["release"],
+                "yes" if state["packages"][header]["installed"] else "missing",
+                "installed" if dkms_ok else "not validated",
+            ])
+
+    def _refresh_installed_state(self) -> None:
+        self.report = build_report()
+        self._populate_kernel_state()
+        self.report_view.setPlainText(json.dumps(self.report, ensure_ascii=True, indent=2, sort_keys=True))
+        self._refresh_plan()
 
     def _refresh_plan(self) -> None:
         policy_id = self.selector.currentData()
