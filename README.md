@@ -1,7 +1,7 @@
 # Linxira Hardware and Driver Manager
 
 Hardware and driver reporting and fixed-policy planning UI for Linxira OS. It
-consumes `/usr/bin/linxira-chwd-detector` with no arguments, keeps hardware facts
+consumes `/usr/bin/linxira-hwd-detector` with no arguments, keeps hardware facts
 separate from package policy, and can run a root-owned read-only diagnosis through
 the shared Linxira system transaction service.
 

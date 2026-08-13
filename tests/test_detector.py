@@ -25,7 +25,7 @@ class DetectorTests(unittest.TestCase):
             parse_detector_json(raw)
 
     def test_malformed_and_contract_variants_rejected(self) -> None:
-        for raw in ("{", detector_json("unknown.fact"), detector_json("graphics.intel").replace("0.1.0", "dev"), detector_json("graphics.intel").replace("linxira-chwd-detector", "other")):
+        for raw in ("{", detector_json("unknown.fact"), detector_json("graphics.intel").replace("0.1.0", "dev"), detector_json("graphics.intel").replace("linxira-hwd-detector", "other")):
             with self.subTest(raw=raw[:30]), self.assertRaises(DetectorError):
                 parse_detector_json(raw)
 

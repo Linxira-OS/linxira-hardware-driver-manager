@@ -8,7 +8,7 @@ import subprocess
 def detector_document(*profile_ids: str) -> dict:
     return {
         "schema_version": 1,
-        "detector": {"name": "linxira-chwd-detector", "version": "0.1.0", "upstream_chwd": "1.23.0"},
+        "detector": {"name": "linxira-hwd-detector", "version": "0.1.0", "upstream_chwd": "1.23.0"},
         "evidence": {
             "pci": [],
             "dmi": {"system_vendor": None, "product_name": None, "chassis_type": None},

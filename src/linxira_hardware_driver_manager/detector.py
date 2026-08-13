@@ -7,8 +7,8 @@ import subprocess
 from typing import Any, Callable
 
 
-DETECTOR = "/usr/bin/linxira-chwd-detector"
-DETECTOR_NAME = "linxira-chwd-detector"
+DETECTOR = "/usr/bin/linxira-hwd-detector"
+DETECTOR_NAME = "linxira-hwd-detector"
 DETECTOR_SCHEMA_VERSION = 1
 DETECTOR_TIMEOUT_SECONDS = 10
 MAX_OUTPUT_BYTES = 1024 * 1024
