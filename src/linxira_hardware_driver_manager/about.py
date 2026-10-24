@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QW
 
 
 APP_NAME = "Linxira Hardware and Driver Manager"
-APP_VERSION = "0.4.0"
+APP_VERSION = "0.4.1"
 HOMEPAGE_URL = "https://linxira-os.github.io/"
 REPOSITORY_URL = "https://github.com/Linxira-OS/linxira-hardware-driver-manager"
 ISSUES_URL = f"{REPOSITORY_URL}/issues"
